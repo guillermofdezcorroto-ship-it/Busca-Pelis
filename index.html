@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Buscador de Películas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{min-height:100vh;background:#0f0f1a;color:#e2e8f0;font-family:'Segoe UI',sans-serif;font-size:16px}
+
+    header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:16px 24px;border-bottom:1px solid #2d3748;display:flex;align-items:center;gap:12px}
+    header h1{font-size:20px;font-weight:700}
+    header p{font-size:12px;color:#718096;margin-top:2px}
+
+    /* NAV TABS */
+    nav{display:flex;background:#1a1a2e;border-bottom:1px solid #2d3748}
+    .tab{flex:1;padding:14px;text-align:center;cursor:pointer;font-size:14px;color:#718096;border-bottom:3px solid transparent;transition:all .2s}
+    .tab.active{color:#e53e3e;border-bottom-color:#e53e3e;font-weight:700}
+
+    main{max-width:900px;margin:0 auto;padding:24px 16px}
+
+    /* CARDS */
+    .card{background:#1a1a2e;border:1px solid #2d3748;border-radius:14px;padding:24px;margin-bottom:20px}
+    .card h2{font-size:16px;color:#a0aec0;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+    /* DROP ZONE */
+    .drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #4a5568;border-radius:12px;padding:32px 16px;cursor:pointer;gap:10px;transition:border-color .2s;text-align:center}
+    .drop-zone:hover{border-color:#e53e3e}
+    .drop-zone .icon{font-size:40px}
+    .drop-zone .lbl{font-size:15px;color:#a0aec0}
+    .drop-zone .sub{font-size:12px;color:#718096}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s}
+    .btn:hover{opacity:.85}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-red{background:linear-gradient(135deg,#e53e3e,#c53030);color:#fff}
+    .btn-gray{background:#2d3748;color:#e2e8f0;border:1px solid #4a5568}
+    .btn-green{background:linear-gradient(135deg,#38a169,#276749);color:#fff}
+    .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+    /* STATUS */
+    .status{margin-top:12px;font-size:13px;padding:10px 14px;border-radius:8px;display:none}
+    .status.ok{background:#1c4532;color:#9ae6b4;display:block}
+    .status.err{background:#4a1515;color:#feb2b2;display:block}
+
+    /* SEARCH */
+    #search-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    #search-input{flex:1;min-width:200px;padding:12px 16px;border-radius:10px;background:#16213e;border:1px solid #4a5568;color:#e2e8f0;font-size:15px;outline:none}
+    #mode-toggle{display:flex;background:#16213e;border:1px solid #4a5568;border-radius:10px;overflow:hidden}
+    .mode-btn{padding:10px 16px;border:none;cursor:pointer;font-size:13px;background:transparent;color:#a0aec0;transition:all .15s}
+    .mode-btn.active{background:#c53030;color:#fff;font-weight:700}
+    #result-count{color:#718096;font-size:13px;margin-bottom:10px}
+
+    /* TABLE */
+    .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid #2d3748}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    thead tr{background:#16213e}
+    th{padding:12px 14px;text-align:left;color:#a0aec0;font-weight:600;border-bottom:1px solid #2d3748;white-space:nowrap}
+    tbody tr:nth-child(odd){background:#16213e}
+    tbody tr:nth-child(even){background:#1a1a2e}
+    tbody tr:hover{background:#2d3748}
+    td{padding:10px 14px;color:#a0aec0}
+    td.col-title{color:#e2e8f0;font-weight:500}
+    mark{background:#e53e3e;color:#fff;border-radius:3px;padding:0 2px}
+    #no-results{padding:40px;text-align:center;color:#718096}
+
+    /* EMPTY STATE */
+    .empty{text-align:center;padding:60px 20px;color:#718096}
+    .empty .icon{font-size:48px;margin-bottom:12px}
+
+    @media(max-width:500px){
+      .btn{padding:10px 14px;font-size:13px}
+      th,td{padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:26px">🎬</span>
+  <div>
+    <h1>Buscador de Películas</h1>
+    <p>Gestión y búsqueda de tu colección</p>
+  </div>
+</header>
+
+<nav>
+  <div class="tab active" onclick="showTab('buscar')">🔍 Buscar</div>
+  <div class="tab" onclick="showTab('convertir')">🔄 Convertir</div>
+</nav>
+
+<main>
+
+  <!-- ===== TAB BUSCAR ===== -->
+  <div id="tab-buscar">
+    <div class="card">
+      <h2>📂 Cargar colección JSON</h2>
+      <label class="drop-zone" for="json-search-input">
+        <span class="icon">📄</span>
+        <span class="lbl">Toca para abrir tu fichero JSON</span>
+        <span class="sub">Formato: peliculas.json</span>
+      </label>
+      <input type="file" id="json-search-input" accept=".json" style="display:none" onchange="loadJSON(event)"/>
+      <div id="json-status" class="status"></div>
+    </div>
+
+    <div id="search-section" style="display:none">
+      <div id="search-bar">
+        <input id="search-input" type="text" placeholder="Buscar película..." oninput="renderTable()"/>
+        <div id="mode-toggle">
+          <button class="mode-btn active" onclick="setMode('contains')">Contiene</button>
+          <button class="mode-btn" onclick="setMode('startsWith')">Empieza por</button>
+        </div>
+      </div>
+      <p id="result-count"></p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>🎬 Título</th><th>💿 Disco</th></tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB CONVERTIR ===== -->
+  <div id="tab-convertir" style="display:none">
+
+    <!-- Excel → JSON -->
+    <div class="card">
+      <h2>📊 Excel → JSON</h2>
+      <label class="drop-zone" for="excel-input">
+        <span class="icon">📂</span>
+        <span class="lbl">Toca para abrir tu Excel</span>
+        <span class="sub">.xlsx o .xls — Columna A: Título · Columna C: Disco</span>
+      </label>
+      <input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="loadExcel(event)"/>
+      <div id="excel-status" class="status"></div>
+      <div class="btn-row">
+        <button class="btn btn-green" id="btn-export-json" onclick="exportJSON()" disabled>⬇️ Descargar JSON</button>
+      </div>
+    </div>
+
+    <!-- JSON → Excel -->
+    <div class="card">
+      <h2>📄 JSON → Excel</h2>
+      <label class="drop-zone" for="json-conv-input">
+        <span class="icon">📄</span>
+        <span class="lbl">Toca para abrir tu JSON</span>
+        <span class="sub">.json</span>
+      </label>
+      <input type="file" id="json-conv-input" accept=".json" style="display:none" onchange="loadJSONforExcel(event)"/>
+      <div id="json-conv-status" class="status"></div>
+      <div class="btn-row">
+        <button class="btn btn-green" id="btn-export-excel" onclick="exportExcel()" disabled>⬇️ Descargar Excel</button>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  // ── State ──
+  let movies = [];       // [{titulo, disco}]
+  let excelData = [];    // from excel load
+  let jsonForExcel = []; // from json load for excel export
+  let searchMode = "contains";
+
+  // ── Tabs ──
+  function showTab(t) {
+    document.getElementById("tab-buscar").style.display = t === "buscar" ? "block" : "none";
+    document.getElementById("tab-convertir").style.display = t === "convertir" ? "block" : "none";
+    document.querySelectorAll(".tab").forEach((el,i) => el.classList.toggle("active", (i===0&&t==="buscar")||(i===1&&t==="convertir")));
+  }
+
+  // ── Helpers ──
+  function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function showStatus(id, msg, ok) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = "status " + (ok ? "ok" : "err");
+  }
+  function setMode(m) {
+    searchMode = m;
+    document.querySelectorAll(".mode-btn").forEach((b,i)=>b.classList.toggle("active",(i===0&&m==="contains")||(i===1&&m==="startsWith")));
+    renderTable();
+  }
+
+  // ── Load JSON for search ──
+  function loadJSON(e) {
+    const file = e.target.files[0]; if(!file) return;
+    const r = new FileReader();
+    r.onload = evt => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        if (!Array.isArray(data) || !data.length) throw new Error("Formato incorrecto");
+        movies = data.map(d => ({ titulo: d.titulo||d.Titulo||d.TITULO||"", disco: d.disco||d.Disco||d.DISCO||"" }));
+        showStatus("json-status", `✅ ${movies.length} películas cargadas desde "${file.name}"`, true);
+        document.getElementById("search-section").style.display = "block";
+        document.getElementById("search-input").value = "";
+        renderTable();
+      } catch(err) { showStatus("json-status", "❌ Error al leer el JSON: " + err.message, false); }
+    };
+    r.readAsText(file);
+  }
+
+  // ── Search table ──
+  function renderTable() {
+    const q = document.getElementById("search-input").value.trim().toLowerCase();
+    const results = q
+      ? movies.filter(m => searchMode==="contains" ? m.titulo.toLowerCase().includes(q) : m.titulo.toLowerCase().startsWith(q))
+      : movies;
+
+    document.getElementById("result-count").textContent = q
+      ? `${results.length} resultado${results.length!==1?"s":""} encontrado${results.length!==1?"s":""}`
+      : `${movies.length} películas en tu colección`;
+
+    const tbody = document.getElementById("table-body");
+    if (!results.length) {
+      tbody.innerHTML = `<tr><td colspan="2" id="no-results">No se encontraron resultados para "<strong>${esc(q)}</strong>"</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = results.map(m => {
+      let title = esc(m.titulo);
+      if (q) {
+        const idx = m.titulo.toLowerCase().indexOf(q);
+        if (idx !== -1) title = esc(m.titulo.slice(0,idx))+"<mark>"+esc(m.titulo.slice(idx,idx+q.length))+"</mark>"+esc(m.titulo.slice(idx+q.length));
+      }
+      return `<tr><td class="col-title">${title}</td><td>${esc(m.disco)}</td></tr>`;
+    }).join("");
+  }
+
+  // ── Load Excel ──
+  function loadExcel(e) {
+    const file = e.target.files[0]; if(!file) return;
+    const r = new FileReader();
+    r.onload = evt => {
+      try {
+        const wb = XLSX.read(evt.target.result, {type:"array", cellText:true, cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+
+        // Leer todas las filas como array de arrays (raw)
+        const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:"", raw:false});
+        if (raw.length < 2) throw new Error("El archivo parece vacío");
+
+        // Fila 0 = cabeceras, detectar índices de columna A y C
+        const headers = raw[0];
+        const idxA = 0; // Columna A siempre es índice 0
+        const idxC = 2; // Columna C siempre es índice 2
+
+        // Log de diagnóstico: mostrar primeras 3 filas de datos
+        console.log("Cabeceras:", headers);
+        console.log("Primeras filas:", raw.slice(1,4));
+
+        excelData = raw.slice(1)
+          .filter(row => row[idxA] !== undefined && String(row[idxA]).trim() !== "")
+          .map(row => ({
+            titulo: String(row[idxA]).trim(),
+            disco:  String(row[idxC]||"").trim()
+          }));
+
+        if (!excelData.length) throw new Error("No se encontraron datos en la columna A");
+
+        showStatus("excel-status",
+          `✅ ${excelData.length} películas leídas. Cabecera A: "${headers[idxA]}" | Cabecera C: "${headers[idxC]||'(vacía)'}"`, true);
+        document.getElementById("btn-export-json").disabled = false;
+      } catch(err) { showStatus("excel-status","❌ Error: "+err.message,false); }
+    };
+    r.readAsArrayBuffer(file);
+  }
+
+  // ── Export JSON ──
+  function exportJSON() {
+    if (!excelData.length) return;
+    const blob = new Blob([JSON.stringify(excelData, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "peliculas.json";
+    a.click();
+  }
+
+  // ── Load JSON for Excel export ──
+  function loadJSONforExcel(e) {
+    const file = e.target.files[0]; if(!file) return;
+    const r = new FileReader();
+    r.onload = evt => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        if (!Array.isArray(data)||!data.length) throw new Error("Formato incorrecto");
+        jsonForExcel = data.map(d=>({ titulo:d.titulo||d.Titulo||"", disco:d.disco||d.Disco||"" }));
+        showStatus("json-conv-status",`✅ ${jsonForExcel.length} películas cargadas desde "${file.name}"`,true);
+        document.getElementById("btn-export-excel").disabled = false;
+      } catch(err){ showStatus("json-conv-status","❌ Error: "+err.message,false); }
+    };
+    r.readAsText(file);
+  }
+
+  // ── Export Excel ──
+  function exportExcel() {
+    if (!jsonForExcel.length) return;
+    const ws = XLSX.utils.json_to_sheet(jsonForExcel.map(m=>({ "Título":m.titulo, "Disco":m.disco })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Películas");
+    XLSX.writeFile(wb, "peliculas.xlsx");
+  }
+</script>
+</body>
+</html>
