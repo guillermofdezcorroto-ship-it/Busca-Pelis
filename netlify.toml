@@ -1,7 +1,0 @@
-[[plugins]]
-package = "netlify-plugin-basic-auth"
-
-  [plugins.inputs]
-  users = [
-    "${GFC}:${1Fortuna1}"
-  ]
