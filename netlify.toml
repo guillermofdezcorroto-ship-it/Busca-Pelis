@@ -1,0 +1,7 @@
+[[plugins]]
+package = "netlify-plugin-basic-auth"
+
+  [plugins.inputs]
+  users = [
+    "${BASIC_AUTH_USER}:${BASIC_AUTH_PASS}"
+  ]
