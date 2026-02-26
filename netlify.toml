@@ -3,5 +3,5 @@ package = "netlify-plugin-basic-auth"
 
   [plugins.inputs]
   users = [
-    "${GFC}:${1Fortuna1}"
+    ${BASIC_AUTH_USER}:${BASIC_AUTH_PASS}
   ]
