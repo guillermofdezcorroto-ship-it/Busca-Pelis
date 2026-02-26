@@ -307,4 +307,14 @@
   }
 </script>
 </body>
+  <script>
+  const password = "1Fortuna"; // CAMBIA ESTO POR TU CONTRASEÑA
+
+  const userInput = prompt("Introduce la contraseña:");
+
+  if (userInput !== password) {
+    document.write("Acceso denegado");
+    throw new Error("Acceso denegado");
+  }
+</script>
 </html>
